@@ -1,0 +1,8 @@
+{
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/(dashboard)/attendance/page": "app/(dashboard)/attendance/page.js",
+  "/(dashboard)/activity/page": "app/(dashboard)/activity/page.js",
+  "/(dashboard)/clients/page": "app/(dashboard)/clients/page.js",
+  "/(dashboard)/leads/page": "app/(dashboard)/leads/page.js",
+  "/(dashboard)/projects/page": "app/(dashboard)/projects/page.js"
+}
