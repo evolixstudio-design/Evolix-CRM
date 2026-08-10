@@ -1,4 +1,4 @@
-// File: D:\Evolix-CRM\app\api\notifications\route.ts
+// File: D:\evolix\Evolix-CRM\app\api\notifications\route.ts
 import * as entry from '../../../../../app/api/notifications/route.js'
 import type { NextRequest } from 'next/server.js'
 

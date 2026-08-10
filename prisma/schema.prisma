@@ -1,11 +1,14 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
 
 enum UserRole {
   CO_FOUNDER
@@ -218,6 +221,13 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+}
+
 model ExpenseCategory {
   id           String   @id @default(uuid()) @db.Uuid
   name         String   @unique
@@ -249,27 +259,52 @@ enum NotificationType {
 }
 
 enum ActivityAction {
+  USER_LOGIN
+  USER_LOGOUT
   LEAD_CREATED
   LEAD_UPDATED
   LEAD_STATUS_CHANGED
   LEAD_CONVERTED
+  CALL_LOGGED
+  FOLLOW_UP_CREATED
+  FOLLOW_UP_UPDATED
+  MEETING_SCHEDULED
+  MEETING_COMPLETED
+  QUOTATION_CREATED
+  QUOTATION_UPDATED
   CLIENT_CREATED
   CLIENT_UPDATED
+  CLIENT_CONVERTED
   ONBOARDING_STARTED
   ONBOARDING_COMPLETED
   PROJECT_CREATED
   PROJECT_UPDATED
   PROJECT_COMPLETED
+  PHASE_CREATED
+  PHASE_UPDATED
   TASK_CREATED
   TASK_ASSIGNED
+  TASK_ACCEPTED
+  TASK_DECLINED
+  TASK_SUBMITTED
+  PROOF_UPLOADED
+  APPROVAL_GRANTED
+  APPROVAL_REJECTED
   TASK_COMPLETED
+  INVOICE_CREATED
+  INVOICE_UPDATED
   PAYMENT_CREATED
+  PAYMENT_RECORDED
   PAYMENT_UPDATED
   EXPENSE_CREATED
+  EXPENSE_RECORDED
   EXPENSE_UPDATED
+  ATTENDANCE_CHECKIN
+  ATTENDANCE_CHECKOUT
   USER_CREATED
   USER_UPDATED
   ROLE_CHANGED
+  PERMISSION_CHANGED
 }
 
 enum EntityType {
@@ -278,9 +313,16 @@ enum EntityType {
   CLIENT
   ONBOARDING
   PROJECT
+  PHASE
   TASK
+  QUOTATION
+  INVOICE
   PAYMENT
   EXPENSE
+  MEETING
+  CALL
+  ATTENDANCE
+  SYSTEM
 }
 
 model User {
@@ -289,6 +331,8 @@ model User {
   email               String             @unique
   passwordHash        String?
   role                UserRole
+  phone               String?
+  department          String?
   avatarUrl           String?
   isActive            Boolean            @default(true)
   createdAt           DateTime           @default(now())
@@ -310,12 +354,14 @@ model User {
   leadFollowUpsCreated  LeadFollowUp[]   @relation("LeadFollowUpCreator")
   createdQuotations     Quotation[]      @relation("QuotationCreator")
   createdInvoices       Invoice[]        @relation("InvoiceCreator")
+  createdRecurringContracts RecurringContract[] @relation("RecurringContractCreator")
   organizedMeetings     Meeting[]        @relation("MeetingOrganizer")
   meetingReminders      MeetingReminder[] @relation("InternalUserReminder")
   paymentsRecorded    Payment[]          @relation("PaymentRecorder")
   expensesRecorded    Expense[]          @relation("ExpenseRecorder")
   notifications       Notification[]
   activityLogs        ActivityLog[]
+  attendanceRecords   Attendance[]
 
   @@index([role])
   @@index([isActive])
@@ -426,6 +472,7 @@ model Client {
   invoices              Invoice[]
   payments              Payment[]
   expenses              Expense[]
+  recurringContracts    RecurringContract[]
 
   @@index([status])
   @@index([assignedToId])
@@ -485,6 +532,7 @@ model Project {
   invoices       Invoice[]
   payments       Payment[]
   expenses       Expense[]
+  recurringContracts RecurringContract[]
 
   @@index([clientId])
   @@index([status])
@@ -593,13 +641,16 @@ model Payment {
   updatedAt     DateTime      @updatedAt
 
   invoiceId     String?       @db.Uuid
+  phaseId       String?       @db.Uuid
   client        Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   project       Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   invoice       Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  phase         ProjectPhase? @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   recordedBy    User          @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
 
   @@index([clientId, status])
   @@index([projectId, status])
+  @@index([phaseId])
   @@index([status, paymentDate])
   @@map("payments")
 }
@@ -653,7 +704,7 @@ model ActivityLog {
   userId      String        @db.Uuid
   action      ActivityAction
   entityType  EntityType
-  entityId    String        @db.Uuid
+  entityId    String?       @db.Uuid
   metadata    Json?
   createdAt   DateTime      @default(now())
 
@@ -666,23 +717,32 @@ model ActivityLog {
 }
 
 model ProjectPhase {
-  id          String      @id @default(uuid()) @db.Uuid
-  projectId   String      @db.Uuid
-  name        String
-  description String?
-  startDate   DateTime?
-  endDate     DateTime?
-  status      PhaseStatus @default(NOT_STARTED)
-  progress    Int         @default(0)
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                  String        @id @default(uuid()) @db.Uuid
+  projectId           String        @db.Uuid
+  name                String
+  description         String?
+  startDate           DateTime?
+  endDate             DateTime?
+  dueDate             DateTime?
+  amount              Decimal       @default(0) @db.Decimal(12, 2)
+  paymentStatus       PaymentStatus @default(UNPAID)
+  paymentReceivedDate DateTime?
+  invoiceId           String?       @db.Uuid
+  status              PhaseStatus   @default(NOT_STARTED)
+  progress            Int           @default(0)
+  order               Int           @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks       Task[]
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoice             Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  tasks               Task[]
+  payments            Payment[]
 
   @@index([projectId])
   @@index([status])
+  @@index([paymentStatus])
+  @@index([invoiceId])
   @@map("project_phases")
 }
 
@@ -828,20 +888,26 @@ model Invoice {
 
   terms         String?
   notes         String?
+  recurringContractId       String?                  @db.Uuid
+  recurringBillingPeriodId  String?                  @unique @db.Uuid
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  project       Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  createdBy     User          @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  items         InvoiceItem[]
-  payments      Payment[]
+  project                 Project?                @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  client                  Client                  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy               User                    @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  items                   InvoiceItem[]
+  payments                Payment[]
+  phases                  ProjectPhase[]
+  recurringContract       RecurringContract?      @relation("ContractInvoices", fields: [recurringContractId], references: [id], onDelete: SetNull)
+  recurringBillingPeriod  RecurringBillingPeriod? @relation("BillingPeriodInvoice", fields: [recurringBillingPeriodId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
   @@index([clientId])
   @@index([status])
   @@index([dueDate])
+  @@index([recurringContractId])
   @@map("invoices")
 }
 
@@ -858,4 +924,77 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+model RecurringContract {
+  id                String                   @id @default(uuid()) @db.Uuid
+  title             String
+  clientId          String                   @db.Uuid
+  projectId         String?                  @db.Uuid
+  createdById       String                   @db.Uuid
+  startDate         DateTime
+  endDate           DateTime
+  durationMonths    Int                      @default(12)
+  billingFrequency  String                   @default("MONTHLY")
+  monthlyAmount     Decimal                  @default(0) @db.Decimal(12, 2)
+  currency          String                   @default("INR")
+  status            String                   @default("ACTIVE")
+  notes             String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  client            Client                   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  project           Project?                 @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy         User                     @relation("RecurringContractCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  billingPeriods    RecurringBillingPeriod[]
+  invoices          Invoice[]                @relation("ContractInvoices")
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([status])
+  @@map("recurring_contracts")
+}
+
+model RecurringBillingPeriod {
+  id              String            @id @default(uuid()) @db.Uuid
+  contractId      String            @db.Uuid
+  periodNumber    Int
+  periodStartDate DateTime
+  periodEndDate   DateTime
+  dueDate         DateTime
+  amount          Decimal           @default(0) @db.Decimal(12, 2)
+  invoiceId       String?           @db.Uuid
+  status          String            @default("PENDING")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  contract        RecurringContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  invoice         Invoice?          @relation("BillingPeriodInvoice")
+
+  @@unique([contractId, periodNumber])
+  @@index([contractId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("recurring_billing_periods")
+}
+
+model Attendance {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  date      DateTime
+  checkIn   DateTime?
+  checkOut  DateTime?
+  status    AttendanceStatus @default(PRESENT)
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("attendance")
 }
