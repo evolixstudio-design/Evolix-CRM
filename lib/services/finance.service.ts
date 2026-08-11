@@ -658,3 +658,32 @@ export async function createExpenseCategory(user: AuthUser, name: string) {
   };
 }
 
+/**
+ * Delete expense record (Co-Founder only)
+ */
+export async function deleteExpense(user: AuthUser, expenseId: string) {
+  await requireCoFounder(user);
+
+  const existing = await prisma.expense.findUnique({ where: { id: expenseId } });
+  if (!existing) throw AppError.notFound("Expense record not found.");
+
+  await prisma.expense.delete({ where: { id: expenseId } });
+
+  return { success: true, id: expenseId };
+}
+
+/**
+ * Delete payment record (Co-Founder only)
+ */
+export async function deletePayment(user: AuthUser, paymentId: string) {
+  await requireCoFounder(user);
+
+  const existing = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!existing) throw AppError.notFound("Payment record not found.");
+
+  await prisma.payment.delete({ where: { id: paymentId } });
+
+  return { success: true, id: paymentId };
+}
+
+

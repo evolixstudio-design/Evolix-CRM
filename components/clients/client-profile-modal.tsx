@@ -86,6 +86,23 @@ export function ClientProfileModal({
           </div>
         </div>
 
+        {/* Overall Client Progress Bar */}
+        <div className="rounded-xl border border-teal-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/60 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <span className="text-xs font-bold text-teal-900 uppercase tracking-wider">Overall Client Task Progress</span>
+              <p className="text-xs text-slate-500 mt-0.5">Calculated from task completion status and subtasks</p>
+            </div>
+            <span className="text-lg font-black text-teal-700">{client.progressPercentage ?? 0}%</span>
+          </div>
+          <div className="h-2.5 w-full rounded-full bg-slate-200/80 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500 rounded-full"
+              style={{ width: `${client.progressPercentage ?? 0}%` }}
+            />
+          </div>
+        </div>
+
         {/* Financial Summary Cards (CO_FOUNDER ONLY) */}
         {userRole === "CO_FOUNDER" && client.financials && (
           <div className="grid grid-cols-2 gap-4">

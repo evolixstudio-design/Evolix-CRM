@@ -21,6 +21,7 @@ export interface ClientTaskSummary {
   status: TaskStatus;
   dueDate: string | null;
   assignedTo: UserSummary | null;
+  subtasks?: { id: string; title: string; isCompleted: boolean }[];
 }
 
 export interface OnboardingItem {
@@ -66,6 +67,7 @@ export interface ClientItem {
   onboarding?: OnboardingItem | null;
   projects?: ClientProjectSummary[];
   tasks?: ClientTaskSummary[];
+  progressPercentage?: number;
   // Co-Founder only financial summaries (STRICTLY OMITTED for Interns)
   financials?: {
     totalPayments: number;

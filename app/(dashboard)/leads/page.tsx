@@ -64,6 +64,9 @@ export default function LeadsPage() {
 
   const [convertTargetLead, setConvertTargetLead] = React.useState<LeadItem | null>(null);
   const [isConverting, setIsConverting] = React.useState(false);
+  const [deletingLead, setDeletingLead] = React.useState<LeadItem | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
 
   // Fetch Co-Founders for dropdowns
   const fetchCoFounders = React.useCallback(async () => {
@@ -414,6 +417,36 @@ export default function LeadsPage() {
     }
   };
 
+  const handleDeleteLeadConfirm = async () => {
+    if (!deletingLead) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/leads/${deletingLead.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({
+          type: "error",
+          title: "Delete Failed",
+          message: json.error?.message || "Failed to delete lead.",
+        });
+        return;
+      }
+      setToast({
+        type: "success",
+        title: "Lead Deleted",
+        message: `Successfully deleted lead '${deletingLead.name}'.`,
+      });
+      setDeletingLead(null);
+      fetchLeads();
+    } catch (e) {
+      setToast({ type: "error", title: "Error", message: "Network error deleting lead." });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -529,6 +562,7 @@ export default function LeadsPage() {
                 onViewDetails={(lead) => handleViewDetails(lead.id)}
                 onEditLead={handleEditOpen}
                 onConvertLead={(lead) => setConvertTargetLead(lead)}
+                onDeleteLead={setDeletingLead}
               />
 
               {/* Pagination Controls */}
@@ -641,6 +675,19 @@ export default function LeadsPage() {
         variant="primary"
         isLoading={isConverting}
       />
+
+      {/* Confirm Lead Delete Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(deletingLead)}
+        onClose={() => setDeletingLead(null)}
+        onConfirm={handleDeleteLeadConfirm}
+        title="Delete Lead Record"
+        description={`Are you sure you want to permanently delete lead record '${deletingLead?.name}'? This action cannot be undone.`}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Lead"}
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Edit2, Building, FolderKanban, Calendar } from "lucide-react";
+import { Edit2, Building, FolderKanban, Calendar, Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export interface ExpenseListTableProps {
   expenses: ExpenseItem[];
   onEditExpense: (expense: ExpenseItem) => void;
+  onDeleteExpense?: (expense: ExpenseItem) => void;
 }
 
-export function ExpenseListTable({ expenses, onEditExpense }: ExpenseListTableProps) {
+export function ExpenseListTable({ expenses, onEditExpense, onDeleteExpense }: ExpenseListTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -81,14 +82,27 @@ export function ExpenseListTable({ expenses, onEditExpense }: ExpenseListTablePr
             </TableCell>
 
             <TableCell className="text-right">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEditExpense(exp)}
-                title="Edit Expense"
-              >
-                <Edit2 className="h-4 w-4 text-slate-500" />
-              </Button>
+              <div className="flex items-center justify-end space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEditExpense(exp)}
+                  title="Edit Expense"
+                >
+                  <Edit2 className="h-4 w-4 text-slate-500" />
+                </Button>
+                {onDeleteExpense && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDeleteExpense(exp)}
+                    title="Delete Expense"
+                    className="hover:bg-rose-50 text-rose-500 hover:text-rose-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </TableCell>
           </TableRow>
         ))}
@@ -96,3 +110,4 @@ export function ExpenseListTable({ expenses, onEditExpense }: ExpenseListTablePr
     </Table>
   );
 }
+

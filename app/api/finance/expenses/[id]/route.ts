@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCoFounder } from "@/lib/permissions";
-import { getExpenseById, updateExpense } from "@/lib/services/finance.service";
+import { getExpenseById, updateExpense, deleteExpense } from "@/lib/services/finance.service";
 import { expenseUpdateSchema } from "@/lib/validation/finance";
 import { handleApiError, AppError } from "@/lib/errors";
 
@@ -51,3 +51,21 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireCoFounder();
+    const result = await deleteExpense(user, params.id);
+
+    return NextResponse.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+

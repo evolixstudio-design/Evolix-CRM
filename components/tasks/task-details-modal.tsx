@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Check,
   X,
+  Plus,
 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ export interface TaskDetailsModalProps {
   onAcceptTask?: (taskId: string) => Promise<void>;
   onDeclineTask?: (taskId: string, reason: string) => Promise<void>;
   onAddComment: (taskId: string, content: string) => Promise<void>;
+  onRefreshTask?: () => void;
   onAddAttachment?: (taskId: string, fileData: any) => Promise<void>;
   isLoading?: boolean;
 }
@@ -49,14 +51,61 @@ export function TaskDetailsModal({
   onAcceptTask,
   onDeclineTask,
   onAddComment,
+  onRefreshTask,
   isLoading = false,
 }: TaskDetailsModalProps) {
   const [commentText, setCommentText] = React.useState("");
   const [isPostingComment, setIsPostingComment] = React.useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = React.useState(false);
   const [isSubmittingAction, setIsSubmittingAction] = React.useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = React.useState("");
+  const [isAddingSubtask, setIsAddingSubtask] = React.useState(false);
 
   if (!task) return null;
+
+  const handleToggleSubtask = async (subtaskId: string, isCompleted: boolean) => {
+    try {
+      await fetch(`/api/tasks/subtasks/${subtaskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCompleted }),
+      });
+      if (onRefreshTask) onRefreshTask();
+    } catch (e) {
+      console.error("Failed to toggle subtask", e);
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    try {
+      await fetch(`/api/tasks/subtasks/${subtaskId}`, {
+        method: "DELETE",
+      });
+      if (onRefreshTask) onRefreshTask();
+    } catch (e) {
+      console.error("Failed to delete subtask", e);
+    }
+  };
+
+  const handleAddSubtaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubtaskTitle.trim()) return;
+    setIsAddingSubtask(true);
+    try {
+      await fetch(`/api/tasks/${task.id}/subtasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newSubtaskTitle.trim() }),
+      });
+      setNewSubtaskTitle("");
+      if (onRefreshTask) onRefreshTask();
+    } catch (e) {
+      console.error("Failed to add subtask", e);
+    } finally {
+      setIsAddingSubtask(false);
+    }
+  };
+
 
   const handleStatusClick = async (newStatus: TaskStatus) => {
     await onStatusChange(task.id, newStatus);
@@ -269,6 +318,87 @@ export function TaskDetailsModal({
               </p>
             </div>
           )}
+
+          {/* Subtasks / Subdivided Steps Section */}
+          <div className="space-y-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Subtasks & Progress ({task.subtasks ? task.subtasks.filter((s) => s.isCompleted).length : 0}/{task.subtasks ? task.subtasks.length : 0})
+                </h4>
+              </div>
+            </div>
+
+            {/* Subtasks Progress Bar */}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-300 rounded-full"
+                  style={{
+                    width: `${Math.round(
+                      (task.subtasks.filter((s) => s.isCompleted).length / task.subtasks.length) * 100
+                    )}%`,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Subtasks List */}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {task.subtasks && task.subtasks.length > 0 ? (
+                task.subtasks.map((st) => (
+                  <div
+                    key={st.id}
+                    className="flex items-center justify-between p-2 rounded-lg border border-slate-100 bg-white text-xs hover:border-slate-200 transition-colors"
+                  >
+                    <label className="flex items-center space-x-2.5 cursor-pointer flex-1 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={st.isCompleted}
+                        onChange={() => handleToggleSubtask(st.id, !st.isCompleted)}
+                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      <span className={st.isCompleted ? "line-through text-slate-400 truncate" : "font-medium text-slate-800 truncate"}>
+                        {st.title}
+                      </span>
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteSubtask(st.id)}
+                      className="h-6 w-6 text-slate-400 hover:text-rose-600 flex-shrink-0"
+                      title="Remove subtask"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 italic">No subtasks added yet. Subdivide this task below.</p>
+              )}
+            </div>
+
+            {/* Add Subtask Form */}
+            <form onSubmit={handleAddSubtaskSubmit} className="flex gap-2">
+              <Input
+                placeholder="Subdivide task into a small step..."
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                className="text-xs h-8"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                type="submit"
+                disabled={isAddingSubtask || !newSubtaskTitle.trim()}
+                className="h-8 text-xs font-semibold"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add Step
+              </Button>
+            </form>
+          </div>
 
           {/* Comments Section */}
           <div className="space-y-3">

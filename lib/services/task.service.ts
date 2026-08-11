@@ -89,6 +89,14 @@ function formatTask(task: any): TaskItem {
       fileType: a.fileType,
       createdAt: a.createdAt.toISOString(),
     })),
+    subtasks: (task.subtasks || []).map((s: any) => ({
+      id: s.id,
+      taskId: s.taskId,
+      title: s.title,
+      isCompleted: s.isCompleted,
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+    })),
   };
 }
 
@@ -209,6 +217,17 @@ export async function getTasks(
             },
           },
         },
+        subtasks: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            taskId: true,
+            title: true,
+            isCompleted: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     }),
   ]);
@@ -295,6 +314,17 @@ export async function getTaskById(user: AuthUser, taskId: string): Promise<TaskI
           uploadedBy: {
             select: { id: true, name: true, email: true, avatarUrl: true },
           },
+        },
+      },
+      subtasks: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          taskId: true,
+          title: true,
+          isCompleted: true,
+          createdAt: true,
+          updatedAt: true,
         },
       },
     },
@@ -385,15 +415,17 @@ export async function createTask(user: AuthUser, data: any) {
 export async function acceptTask(user: AuthUser, taskId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, title: true, assignedToId: true, createdById: true },
+    select: { id: true, title: true, assignedToId: true, assignedInternId: true, createdById: true },
   });
 
   if (!task) {
     throw AppError.notFound("Task not found.");
   }
 
-  if (task.assignedToId && task.assignedToId !== user.id && user.role !== "CO_FOUNDER") {
-    throw AppError.forbidden("Only the assigned Team Leader can accept this task.");
+  const isAssigned = task.assignedToId === user.id || task.assignedInternId === user.id;
+
+  if (!isAssigned && user.role !== "CO_FOUNDER") {
+    throw AppError.forbidden("Only the person assigned to this task can accept it.");
   }
 
   const updated = await prisma.task.update({
@@ -422,7 +454,7 @@ export async function acceptTask(user: AuthUser, taskId: string) {
 }
 
 /**
- * Decline task assignment by assigned Team Leader with required reason
+ * Decline task assignment by assigned user with required reason
  */
 export async function declineTask(user: AuthUser, taskId: string, declineReason: string) {
   if (!declineReason || declineReason.trim().length < 3) {
@@ -431,16 +463,19 @@ export async function declineTask(user: AuthUser, taskId: string, declineReason:
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, title: true, assignedToId: true, createdById: true },
+    select: { id: true, title: true, assignedToId: true, assignedInternId: true, createdById: true },
   });
 
   if (!task) {
     throw AppError.notFound("Task not found.");
   }
 
-  if (task.assignedToId && task.assignedToId !== user.id && user.role !== "CO_FOUNDER") {
-    throw AppError.forbidden("Only the assigned Team Leader can decline this task.");
+  const isAssigned = task.assignedToId === user.id || task.assignedInternId === user.id;
+
+  if (!isAssigned && user.role !== "CO_FOUNDER") {
+    throw AppError.forbidden("Only the person assigned to this task can decline it.");
   }
+
 
   const updated = await prisma.task.update({
     where: { id: taskId },
@@ -630,3 +665,79 @@ export async function deleteTask(user: AuthUser, taskId: string) {
 
   return { success: true, id: taskId };
 }
+
+/**
+ * Create a new subtask under a parent task
+ */
+export async function createSubtask(user: AuthUser, taskId: string, title: string) {
+  await requireTaskAccess(user.id, taskId, user.role);
+
+  const cleanTitle = title.trim();
+  if (!cleanTitle) {
+    throw AppError.unprocessableEntity("Subtask title cannot be empty.");
+  }
+
+  const subtask = await prisma.subtask.create({
+    data: {
+      taskId,
+      title: cleanTitle,
+      isCompleted: false,
+    },
+  });
+
+  return getTaskById(user, taskId);
+}
+
+/**
+ * Toggle subtask completion status or update title
+ */
+export async function toggleSubtask(
+  user: AuthUser,
+  subtaskId: string,
+  data: { isCompleted?: boolean; title?: string }
+) {
+  const subtask = await prisma.subtask.findUnique({
+    where: { id: subtaskId },
+    select: { id: true, taskId: true },
+  });
+
+  if (!subtask) {
+    throw AppError.notFound("Subtask not found.");
+  }
+
+  await requireTaskAccess(user.id, subtask.taskId, user.role);
+
+  const updateData: any = {};
+  if (data.isCompleted !== undefined) updateData.isCompleted = data.isCompleted;
+  if (data.title !== undefined && data.title.trim()) updateData.title = data.title.trim();
+
+  await prisma.subtask.update({
+    where: { id: subtaskId },
+    data: updateData,
+  });
+
+  return getTaskById(user, subtask.taskId);
+}
+
+/**
+ * Delete a subtask
+ */
+export async function deleteSubtask(user: AuthUser, subtaskId: string) {
+  const subtask = await prisma.subtask.findUnique({
+    where: { id: subtaskId },
+    select: { id: true, taskId: true },
+  });
+
+  if (!subtask) {
+    throw AppError.notFound("Subtask not found.");
+  }
+
+  await requireTaskAccess(user.id, subtask.taskId, user.role);
+
+  await prisma.subtask.delete({
+    where: { id: subtaskId },
+  });
+
+  return getTaskById(user, subtask.taskId);
+}
+

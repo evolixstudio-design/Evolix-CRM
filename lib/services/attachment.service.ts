@@ -66,6 +66,18 @@ async function verifyEntityExists(entityType: EntityType, entityId: string): Pro
     case EntityType.TASK:
       exists = !!(await prisma.task.findUnique({ where: { id: entityId }, select: { id: true } }));
       break;
+    case EntityType.EXPENSE:
+      exists = !!(await prisma.expense.findUnique({ where: { id: entityId }, select: { id: true } }));
+      break;
+    case EntityType.PAYMENT:
+      exists = !!(await prisma.payment.findUnique({ where: { id: entityId }, select: { id: true } }));
+      break;
+    case EntityType.INVOICE:
+      exists = !!(await prisma.invoice.findUnique({ where: { id: entityId }, select: { id: true } }));
+      break;
+    case EntityType.QUOTATION:
+      exists = !!(await prisma.quotation.findUnique({ where: { id: entityId }, select: { id: true } }));
+      break;
     default:
       throw AppError.unprocessableEntity(`Attachments are not supported for entity type "${entityType}".`);
   }
@@ -92,7 +104,7 @@ export async function getAttachmentsByEntity(
 }
 
 /**
- * Add an attachment to an entity's notes.
+ * Add an attachment to an entity's notes/proof.
  * Validates file metadata, sanitizes filename, and verifies entity existence.
  */
 export async function addAttachment(
@@ -106,10 +118,13 @@ export async function addAttachment(
     fileType?: string | null;
   },
 ): Promise<NoteAttachmentItem> {
-  await requireCoFounder(user);
+  if (!user || !user.id) {
+    throw AppError.unauthorized("Authentication required");
+  }
 
   // Verify entity exists
   await verifyEntityExists(data.entityType, data.entityId);
+
 
   // Sanitize filename
   const safeName = sanitizeFileName(data.fileName);

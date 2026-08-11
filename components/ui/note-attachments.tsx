@@ -133,6 +133,20 @@ export function NoteAttachments({
     return <Paperclip className="h-3.5 w-3.5 text-slate-400" />;
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    if (file.type) setFileType(file.type);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (evt.target?.result) {
+        setFileUrl(evt.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className={`space-y-3 ${compact ? "" : "border-t border-slate-100 pt-4"}`}>
       {/* Section Header */}
@@ -168,24 +182,37 @@ export function NoteAttachments({
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100"
+          className="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-100"
         >
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Select Local File (or paste link below)
+            </label>
+            <input
+              type="file"
+              onChange={handleFileSelect}
+              accept=".png,.jpg,.jpeg,.webp,.pdf"
+              className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+            />
+          </div>
+
           <Input
             label="File Name"
-            placeholder="e.g. Brand_Guidelines_v2.pdf"
+            placeholder="e.g. Proof_of_Payment.pdf"
             value={fileName}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFileName(e.target.value)}
             required
             className="bg-white text-xs h-8"
           />
           <Input
-            label="File URL / Cloud Link"
-            placeholder="https://drive.google.com/file/d/..."
+            label="File URL / Data"
+            placeholder="https://... or select local file above"
             value={fileUrl}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFileUrl(e.target.value)}
             required
             className="bg-white text-xs h-8"
           />
+
           <Input
             label="MIME Type (optional)"
             placeholder="e.g. image/png, application/pdf"

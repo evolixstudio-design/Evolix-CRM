@@ -48,6 +48,15 @@ export interface TaskAttachmentItem {
   createdAt: string;
 }
 
+export interface SubtaskItem {
+  id: string;
+  taskId: string;
+  title: string;
+  isCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TaskItem {
   id: string;
   projectId: string;
@@ -74,6 +83,7 @@ export interface TaskItem {
   updatedAt: string;
   comments?: TaskCommentItem[];
   attachments?: TaskAttachmentItem[];
+  subtasks?: SubtaskItem[];
 }
 
 export interface TaskFilterOptions {

@@ -5,6 +5,31 @@ import { AuthUser } from "@/types";
 import { ClientFilterOptions, PaginatedClientsResponse, ClientItem } from "@/types/client";
 import { ClientStatus, ActivityAction, EntityType, Prisma } from "@prisma/client";
 
+function calculateClientProgress(tasks: any[]): number {
+  if (!tasks || tasks.length === 0) return 0;
+
+  let totalWeight = 0;
+  let completedWeight = 0;
+
+  tasks.forEach((t) => {
+    const subtasks = t.subtasks || [];
+    if (subtasks.length > 0) {
+      const doneSubs = subtasks.filter((s: any) => s.isCompleted).length;
+      totalWeight += subtasks.length;
+      completedWeight += doneSubs;
+    } else {
+      totalWeight += 1;
+      if (t.status === "COMPLETED") {
+        completedWeight += 1;
+      } else if (t.status === "IN_PROGRESS") {
+        completedWeight += 0.5;
+      }
+    }
+  });
+
+  return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+}
+
 /**
  * Helper to build role-scoped Prisma where condition for Clients
  */
@@ -104,6 +129,14 @@ export async function getClients(
         assignedIntern: {
           select: { id: true, name: true, email: true, avatarUrl: true },
         },
+        tasks: {
+          where: user.role === "INTERN" ? { assignedToId: user.id } : undefined,
+          select: {
+            id: true,
+            status: true,
+            subtasks: { select: { id: true, isCompleted: true } },
+          },
+        },
         onboarding: {
           select: {
             id: true,
@@ -143,6 +176,9 @@ export async function getClients(
       financials = { totalPayments, totalExpenses };
     }
 
+    const progressPercentage = calculateClientProgress(client.tasks || []);
+
+
     return {
       id: client.id,
       name: client.name,
@@ -173,6 +209,7 @@ export async function getClients(
             updatedAt: client.updatedAt.toISOString(),
           }
         : null,
+      progressPercentage,
       financials,
     };
   });
@@ -257,6 +294,9 @@ export async function getClientById(user: AuthUser, clientId: string): Promise<C
           assignedTo: {
             select: { id: true, name: true, email: true, avatarUrl: true },
           },
+          subtasks: {
+            select: { id: true, title: true, isCompleted: true },
+          },
         },
       },
       ...(user.role === "CO_FOUNDER"
@@ -329,6 +369,7 @@ export async function getClientById(user: AuthUser, clientId: string): Promise<C
       ...t,
       dueDate: t.dueDate ? t.dueDate.toISOString() : null,
     })),
+    progressPercentage: calculateClientProgress(client.tasks || []),
     financials,
   };
 }

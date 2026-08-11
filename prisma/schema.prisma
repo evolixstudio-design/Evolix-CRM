@@ -583,6 +583,7 @@ model Task {
   createdBy        User         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   comments         TaskComment[]
   attachments      TaskAttachment[]
+  subtasks         Subtask[]
 
   @@index([projectId])
   @@index([clientId])
@@ -592,6 +593,21 @@ model Task {
   @@index([status])
   @@map("tasks")
 }
+
+model Subtask {
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @db.Uuid
+  title       String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
 
 model TaskComment {
   id          String    @id @default(uuid()) @db.Uuid

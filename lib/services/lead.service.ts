@@ -951,3 +951,18 @@ export async function convertLeadToClient(leadId: string, userId: string) {
     };
   });
 }
+
+/**
+ * Delete a lead record (Co-Founder only)
+ */
+export async function deleteLead(leadId: string, userId: string) {
+  const existing = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!existing) {
+    throw AppError.notFound("Lead not found.");
+  }
+
+  await prisma.lead.delete({ where: { id: leadId } });
+
+  return { success: true, id: leadId };
+}
+

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ExpenseItem, ExpenseCategoryItem } from "@/types/finance";
 import { PaymentMethod } from "@prisma/client";
 import { Plus, Check, X } from "lucide-react";
+import { NoteAttachments } from "@/components/ui/note-attachments";
 
 export interface ExpenseFormModalProps {
   isOpen: boolean;
@@ -292,6 +293,15 @@ export function ExpenseFormModal({
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>
+
+        {isEditing && expense && (
+          <div className="pt-2 border-t border-slate-100 space-y-1">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Proof of Payment / Receipts
+            </h4>
+            <NoteAttachments entityType="EXPENSE" entityId={expense.id} compact />
+          </div>
+        )}
 
         <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
           <Button variant="outline" size="sm" type="button" onClick={onClose} disabled={isLoading}>

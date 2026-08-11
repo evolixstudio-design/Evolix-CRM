@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCoFounder } from "@/lib/permissions";
-import { getPaymentById, updatePayment } from "@/lib/services/finance.service";
+import { getPaymentById, updatePayment, deletePayment } from "@/lib/services/finance.service";
 import { paymentUpdateSchema } from "@/lib/validation/finance";
 import { handleApiError, AppError } from "@/lib/errors";
 
@@ -12,7 +12,6 @@ export async function GET(
 ) {
   try {
     const user = await requireCoFounder();
-
     const payment = await getPaymentById(user, params.id);
 
     return NextResponse.json({
@@ -30,7 +29,6 @@ export async function PATCH(
 ) {
   try {
     const user = await requireCoFounder();
-
     const body = await req.json();
     const validation = paymentUpdateSchema.safeParse(body);
 
@@ -46,6 +44,23 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       data: updated,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireCoFounder();
+    const result = await deletePayment(user, params.id);
+
+    return NextResponse.json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     return handleApiError(error);

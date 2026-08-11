@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCoFounder } from "@/lib/permissions";
-import { getLeadById, updateLead } from "@/lib/services/lead.service";
+import { getLeadById, updateLead, deleteLead } from "@/lib/services/lead.service";
 import { leadUpdateSchema } from "@/lib/validation/lead";
 import { handleApiError, AppError } from "@/lib/errors";
 
@@ -51,3 +51,21 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireCoFounder();
+    const result = await deleteLead(params.id, user.id);
+
+    return NextResponse.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCoFounder } from "@/lib/permissions";
+import { requireAuth } from "@/lib/permissions";
 import { addAttachment } from "@/lib/services/attachment.service";
 import { noteAttachmentCreateSchema } from "@/lib/validation/attachment";
 import { handleApiError, AppError } from "@/lib/errors";
@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const user = await requireCoFounder();
+    const user = await requireAuth();
+
 
     const body = await req.json();
     const validation = noteAttachmentCreateSchema.safeParse(body);

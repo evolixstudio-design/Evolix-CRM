@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Edit2, FolderKanban, Calendar } from "lucide-react";
+import { Edit2, FolderKanban, Calendar, Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import { PaymentStatus } from "@prisma/client";
 export interface PaymentListTableProps {
   payments: PaymentItem[];
   onEditPayment: (payment: PaymentItem) => void;
+  onDeletePayment?: (payment: PaymentItem) => void;
 }
 
-export function PaymentListTable({ payments, onEditPayment }: PaymentListTableProps) {
+export function PaymentListTable({ payments, onEditPayment, onDeletePayment }: PaymentListTableProps) {
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
       case "PAID":
@@ -84,14 +85,27 @@ export function PaymentListTable({ payments, onEditPayment }: PaymentListTablePr
             </TableCell>
 
             <TableCell className="text-right">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEditPayment(p)}
-                title="Edit Payment"
-              >
-                <Edit2 className="h-4 w-4 text-slate-500" />
-              </Button>
+              <div className="flex items-center justify-end space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEditPayment(p)}
+                  title="Edit Payment"
+                >
+                  <Edit2 className="h-4 w-4 text-slate-500" />
+                </Button>
+                {onDeletePayment && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDeletePayment(p)}
+                    title="Delete Payment"
+                    className="hover:bg-rose-50 text-rose-500 hover:text-rose-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </TableCell>
           </TableRow>
         ))}
@@ -99,3 +113,4 @@ export function PaymentListTable({ payments, onEditPayment }: PaymentListTablePr
     </Table>
   );
 }
+

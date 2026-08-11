@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Edit2, ArrowRightLeft, User, Calendar } from "lucide-react";
+import { Eye, Edit2, ArrowRightLeft, User, Calendar, Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export interface LeadListTableProps {
   onViewDetails: (lead: LeadItem) => void;
   onEditLead: (lead: LeadItem) => void;
   onConvertLead: (lead: LeadItem) => void;
+  onDeleteLead?: (lead: LeadItem) => void;
 }
 
 export function LeadListTable({
@@ -22,6 +23,7 @@ export function LeadListTable({
   onViewDetails,
   onEditLead,
   onConvertLead,
+  onDeleteLead,
 }: LeadListTableProps) {
   const getStatusBadge = (status: LeadStatus) => {
     switch (status) {
@@ -148,6 +150,17 @@ export function LeadListTable({
                 >
                   <Edit2 className="h-4 w-4 text-slate-500" />
                 </Button>
+                {onDeleteLead && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDeleteLead(lead)}
+                    title="Delete Lead"
+                    className="hover:bg-rose-50 text-rose-500 hover:text-rose-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
                 {lead.convertedClient ? (
                   <Badge variant="success" className="text-[10px] ml-1">
                     Client
@@ -172,3 +185,4 @@ export function LeadListTable({
     </Table>
   );
 }
+

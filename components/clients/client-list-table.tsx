@@ -48,6 +48,7 @@ export function ClientListTable({
           <TableHead>Industry</TableHead>
           <TableHead>Contact</TableHead>
           <TableHead>Team Leader & Intern</TableHead>
+          <TableHead>Task Progress</TableHead>
           <TableHead>Onboarding Status</TableHead>
           {userRole === "CO_FOUNDER" && <TableHead>Paid Total</TableHead>}
           <TableHead className="text-right">Actions</TableHead>
@@ -120,6 +121,23 @@ export function ClientListTable({
                 )}
               </div>
             </TableCell>
+
+            {/* Task Progress Bar */}
+            <TableCell>
+              <div className="w-28 space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-slate-600">Progress</span>
+                  <span className="text-teal-600">{client.progressPercentage ?? 0}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${client.progressPercentage ?? 0}%` }}
+                  />
+                </div>
+              </div>
+            </TableCell>
+
 
             <TableCell>
               {client.onboarding ? (

@@ -12,6 +12,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Toast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FinanceStatCards } from "@/components/finance/finance-stat-cards";
 import { FinanceChart } from "@/components/finance/finance-chart";
 import { PaymentListTable } from "@/components/finance/payment-list-table";
@@ -47,8 +48,12 @@ export default function FinancePage() {
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = React.useState(false);
   const [editingPayment, setEditingPayment] = React.useState<PaymentItem | null>(null);
+  const [deletingPayment, setDeletingPayment] = React.useState<PaymentItem | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = React.useState(false);
   const [editingExpense, setEditingExpense] = React.useState<ExpenseItem | null>(null);
+  const [deletingExpense, setDeletingExpense] = React.useState<ExpenseItem | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
 
   const fetchFinanceData = React.useCallback(async () => {
     setIsLoading(true);
@@ -157,6 +162,50 @@ export default function FinancePage() {
       fetchFinanceData();
     } catch (e) {
       setToast({ type: "error", title: "Error", message: "Network error saving expense." });
+    }
+  };
+
+  const handleDeleteExpenseConfirm = async () => {
+    if (!deletingExpense) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/finance/expenses/${deletingExpense.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({ type: "error", title: "Delete Failed", message: json.error?.message || "Failed to delete expense record." });
+        return;
+      }
+      setToast({ type: "success", title: "Expense Deleted", message: "Successfully deleted expense record." });
+      setDeletingExpense(null);
+      fetchFinanceData();
+    } catch (e) {
+      setToast({ type: "error", title: "Error", message: "Network error deleting expense." });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeletePaymentConfirm = async () => {
+    if (!deletingPayment) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/finance/payments/${deletingPayment.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({ type: "error", title: "Delete Failed", message: json.error?.message || "Failed to delete payment record." });
+        return;
+      }
+      setToast({ type: "success", title: "Payment Deleted", message: "Successfully deleted payment record." });
+      setDeletingPayment(null);
+      fetchFinanceData();
+    } catch (e) {
+      setToast({ type: "error", title: "Error", message: "Network error deleting payment." });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -282,6 +331,7 @@ export default function FinancePage() {
                       setEditingPayment(p);
                       setIsPaymentModalOpen(true);
                     }}
+                    onDeletePayment={setDeletingPayment}
                   />
                 </Card>
 
@@ -299,6 +349,7 @@ export default function FinancePage() {
                       setEditingExpense(e);
                       setIsExpenseModalOpen(true);
                     }}
+                    onDeleteExpense={setDeletingExpense}
                   />
                 </Card>
               </div>
@@ -326,6 +377,7 @@ export default function FinancePage() {
                     setEditingPayment(p);
                     setIsPaymentModalOpen(true);
                   }}
+                  onDeletePayment={setDeletingPayment}
                 />
               )}
             </Card>
@@ -352,6 +404,7 @@ export default function FinancePage() {
                     setEditingExpense(e);
                     setIsExpenseModalOpen(true);
                   }}
+                  onDeleteExpense={setDeletingExpense}
                 />
               )}
             </Card>
@@ -378,6 +431,31 @@ export default function FinancePage() {
         clients={clients}
         projects={projects}
       />
+
+      {/* Confirm Expense Delete Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(deletingExpense)}
+        onClose={() => setDeletingExpense(null)}
+        onConfirm={handleDeleteExpenseConfirm}
+        title="Delete Expense Record"
+        description={`Are you sure you want to permanently delete expense record '${deletingExpense?.description}'? This action cannot be undone.`}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Expense"}
+        variant="destructive"
+        isLoading={isDeleting}
+      />
+
+      {/* Confirm Payment Delete Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(deletingPayment)}
+        onClose={() => setDeletingPayment(null)}
+        onConfirm={handleDeletePaymentConfirm}
+        title="Delete Payment Record"
+        description={`Are you sure you want to permanently delete this payment record for '${deletingPayment?.client.name}'? This action cannot be undone.`}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete Payment"}
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
+
